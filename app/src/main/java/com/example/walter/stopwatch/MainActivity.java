@@ -1,5 +1,6 @@
 package com.example.walter.stopwatch;
 
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.support.design.widget.TabItem;
 import android.support.design.widget.TabLayout;
@@ -22,8 +23,10 @@ public class MainActivity extends AppCompatActivity {
     private final int TIMER_TAB = 2;
 
     private boolean isStopWatchRunning = false;
+    private boolean isTimerRunning = false;
     private int minutes = 0;
     private int seconds = 0;
+    private CountDownTimer countDownTimer;
 
     private int currentTab = STOPWATCH_TAB;
 
@@ -81,6 +84,13 @@ public class MainActivity extends AppCompatActivity {
                 handler.removeCallbacksAndMessages(null);
                 timeView.setText("0:00");
                 timerBar.setProgress(0);
+                if(countDownTimer != null) {
+                    countDownTimer.cancel();
+                }
+                if(currentTab == TIMER_TAB) {
+                    timerBar.setEnabled(true);
+                    timerBar.setProgress(0);
+                }
             }
         });
 
@@ -106,8 +116,8 @@ public class MainActivity extends AppCompatActivity {
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
-                Log.i("Tab Selected: ", tab.getText().toString());
                 if(tab.getText().toString().toUpperCase().equals("STOPWATCH")) {
+                    currentTab = STOPWATCH_TAB;
                     timerBar.setVisibility(View.INVISIBLE);
                     seconds = 0;
                     minutes = 0;
@@ -115,14 +125,81 @@ public class MainActivity extends AppCompatActivity {
                     controlButton.setText("Start");
                     isStopWatchRunning = false;
                     handler.removeCallbacksAndMessages(null);
+                    if(countDownTimer != null) {
+                        countDownTimer.cancel();
+                    }
+                    timerBar.setProgress(0);
+                    controlButton.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if(!isStopWatchRunning) {
+                                isStopWatchRunning = true;
+                                Runnable runnable = new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        handler.postDelayed(this, 1000);
+                                        if(seconds + 1 < 60) {
+                                            seconds++;
+                                        } else {
+                                            seconds = 0;
+                                            minutes++;
+                                        }
+                                        timeView.setText(minutes + ":" + String.format("%02d", seconds));
+                                        controlButton.setText("Stop");
+                                    }
+                                };
+                                handler.post(runnable);
+                            } else {
+                                isStopWatchRunning = false;
+                                handler.removeCallbacksAndMessages(null);
+                                controlButton.setText("Start");
+                            }
+                        }
+                    });
                 } else {
+                    currentTab = TIMER_TAB;
                     timerBar.setVisibility(View.VISIBLE);
+                    timerBar.setProgress(0);
+                    timerBar.setEnabled(true);
                     timeView.setText("0:00");
                     seconds = 0;
                     minutes = 0;
                     controlButton.setText("Start");
                     isStopWatchRunning = false;
                     handler.removeCallbacksAndMessages(null);
+                    controlButton.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if(!isTimerRunning) {
+                                controlButton.setText("Stop");
+                                timerBar.setEnabled(false);
+                                isTimerRunning = true;
+                                countDownTimer = new CountDownTimer(timerBar.getProgress() * 1000, 1000) {
+                                    @Override
+                                    public void onTick(long millisUntilFinished) {
+                                        timerBar.setProgress(timerBar.getProgress() - 1);
+                                        int minutes = (int) (millisUntilFinished / 1000) / 60;
+                                        int seconds = (int) (millisUntilFinished / 1000) % 60;
+                                        String timer = String.valueOf(minutes) + ":" + String.format("%02d", seconds);
+                                        timeView.setText(timer);
+                                    }
+
+                                    @Override
+                                    public void onFinish() {
+                                        isTimerRunning = false;
+                                        controlButton.setText("Start");
+                                        timerBar.setEnabled(true);
+                                    }
+                                };
+                                countDownTimer.start();
+                            } else {
+                                controlButton.setText("Start");
+                                isTimerRunning = false;
+                                timerBar.setEnabled(true);
+                                countDownTimer.cancel();
+                            }
+                        }
+                    });
                 }
             }
 
